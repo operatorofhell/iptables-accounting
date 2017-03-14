@@ -12,7 +12,7 @@ function timestamp() {
 function debug() {
 	if [ ! -z $DEBUG ]
 	then
-		echo -e $1
+		echo -e $*
 	fi
 }
 
@@ -22,16 +22,24 @@ function chainEval() {
 	for CHAIN in $ACC_CHAINS
 	do
 		debug $CHAIN
-		for RULE in $(iptables -n -v -x -L $CHAIN | tail -n +3)
+		for (( i=1; 1; i++))
 		do
-			DATA=$(echo $RULE | awk '{print $2}')
+			LINE=$(iptables -n -v -x -L $CHAIN $i)
+
+			if [ -z "$LINE" ]
+			then
+				break
+			fi
+
+			DATA=$(echo $LINE | awk '{print $2}')
 			DATA=$[$DATA*8]
-			SRC_DST=$(echo $RULE | awk '{print $8"_"$9}' | sed 's/\//-/g')
-			debug "$SRC_DST $DATA"
+			SRC_DST=$(echo $LINE | awk '{print $8"_"$9}' | sed 's/\//-/g')
+
+			debug writing: $(timestamp),$DATA to:  $OUTPUT_DIR/"$CHAIN"_$(date +%F)_"$SRC_DST"
 			echo "$(timestamp),$DATA" >> $OUTPUT_DIR/"$CHAIN"_$(date +%F)_"$SRC_DST"
+
+			iptables -Z $CHAIN $i
 		done
-	
-		iptables -Z $CHAIN
 	done
 }
 
